@@ -2,6 +2,7 @@ const fetch = require("node-fetch");
 const mongoClient = require('./my_generic_mongo_client')
 const winston = require('winston')
 const RULE = "chess"
+const BASE_URL = "https://api.chess.com/pub/player/"
 
 const logConfiguration = {
   'transports': [
@@ -11,12 +12,18 @@ const logConfiguration = {
   ]
 }
 
+const timeToWait = 100
+
 const logger = winston.createLogger(logConfiguration);
 //var user = "tiou"
 var year = "2020"
 
-const URL_LEADERS = "http://localhost:9997/archiduchess/leaders"
-const URL_USERS = "http://localhost:9998/archiduchess/users"
+//const URL_LEADERS = "http://localhost:9997/archiduchess/leaders"
+//const URL_USERS = "http://localhost:9998/archiduchess/users"
+
+const URL_USERS = "https://adc-users.herokuapp.com/archiduchess/users"
+const URL_LEADERS ="https://adc-leaderboard.herokuapp.com/archiduchess/leaders"
+
 const ONLINE_GAME = 'OnlineGame'
 
 // const getDataAndPersist = async url => {
@@ -33,31 +40,31 @@ const ONLINE_GAME = 'OnlineGame'
 
 
 async function getData(url) {
-  try {
+  for(nbTries = 0; nbTries < 3; nbTries++) 
+  {
+    try {
     const response = await fetch(url);
-
-    logger.info("response ====> ");
-    logger.info(response.text());
-
     const json = await response.json();
-
-    // logger.info("response.json() ====> ");
-    // logger.info(response.body);
 
     return (json);
 
-  } catch (error) {
-    logger.info("error ===> " + error);
+  
+    } catch (error) {
+      logger.info("error ===> " + error);
+      if (error.toString().includes("invalid json response body")) await new Promise(resolve => setTimeout(resolve, timeToWait));
+      else return null
+    }
     
-    return null;
+    
   }
+  return null;
 };
 
 async function getDataAndPersist(url) {
   try {
     let json = await getData(url);
     logger.info(url)
-    logger.info(json.games.length)
+   // logger.info(json.games.length)
     if (json != null) fillMongoDbWithJson(json);
   }
   catch (error) {
@@ -67,11 +74,12 @@ async function getDataAndPersist(url) {
 
 async function getGames(user) {
   try {
-    logger.info("user -> " + user)
-    for (let month = 6; month > 0; month--) {
-
-      let url = "https://api.chess.com/pub/player/" + user + "/games/" + year + "/0" + month;
+  
+    for (let month = 7; month > 5; month--) {
+      let premonth = month>9?"/":"/0"
+      let url = BASE_URL + user + "/games/" + year + premonth + month;
       logger.info(url)
+     
       await getDataAndPersist(url);
 
     }
@@ -98,14 +106,14 @@ async function getPlayers() {
   }
 }
 
-function fillMongoDbWithJson(jsonn) {
+async function fillMongoDbWithJson(jsonn) {
 
   for (i in jsonn.games) {
 
     if (jsonn.games[i].rules == RULE) {
 
       let jsonCorrected = prepareJson(jsonn.games[i])
-
+      await new Promise(resolve => setTimeout(resolve, 50));
       mongoClient.genericUpdateOne
         (
           ONLINE_GAME,
@@ -150,7 +158,7 @@ async function getAllGames() {
     const players = await getPlayers()
     for (let player of players) {
       getGames(player);
-      //console.log(player)
+    
     }
   } catch (error) {
     logger.info(error);
@@ -159,3 +167,12 @@ async function getAllGames() {
 
 getAllGames()
 
+
+exports.getData = getData
+exports.getAllGames = getAllGames
+exports.prepareJson = prepareJson
+exports.fillMongoDbWithJson = fillMongoDbWithJson
+exports.getPlayers = getPlayers
+exports.getGames = getGames
+exports.getDataAndPersist = getDataAndPersist
+exports.getData = getData

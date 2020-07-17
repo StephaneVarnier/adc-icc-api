@@ -1,10 +1,17 @@
-//myGenericMongoClient module (with MongoDB/MongoClient)
+
 var MongoClient = require('mongodb').MongoClient;
 var ObjectID = require('mongodb').ObjectID;
 var assert = require('assert');
 
-var mongoDbUrl = 'mongodb://127.0.0.1:27017/icc-games'; 
+
+
+//var mongoDbUrl = 'mongodb://127.0.0.1:27017/icc-games'; 
 var dbName = "icc-games" 
+var user = "tiou"
+var password = "stoz75020"
+
+var mongoDbUrl = "mongodb+srv://"+user+":"+password+"@archiduchess.ki24n.mongodb.net/"+dbName+"?retryWrites=true&w=majority"
+//var mongoDbUrl = "mongodb+srv://"+user+":"+password+"@archiduchess.ki24n.mongodb.net/"+dbName+"?authSource=admin"
 var currentDb=null; 
 
 var setMongoDbUrl = function(dbUrl){
